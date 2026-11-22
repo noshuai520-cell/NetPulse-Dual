@@ -31,6 +31,8 @@ namespace DualEngineNetWatchdog {
         DateTime lastFullTestTime = DateTime.MinValue;
         List<double> speedHistory = new List<double>();
         int appScore = 0;
+        bool isTestingUpload = false;
+
 
         public MainForm() {
             baseDir = AppDomain.CurrentDomain.BaseDirectory;
@@ -206,13 +208,15 @@ namespace DualEngineNetWatchdog {
             Rectangle rect = new Rectangle(42, 12, 140, 140);
             using (Pen bgPen = new Pen(Color.FromArgb(40, 54, 78), 12) { StartCap = LineCap.Round, EndCap = LineCap.Round }) g.DrawArc(bgPen, rect, 150, 240);
             float sweep = (float)(Math.Min(1.0, currentGaugeMbps / Math.Max(100, maxGaugeMbps)) * 240.0);
-            if (sweep > 1) using (Pen fgPen = new Pen(Color.FromArgb(65, 220, 240), 12) { StartCap = LineCap.Round, EndCap = LineCap.Round }) g.DrawArc(fgPen, rect, 150, sweep);
-            string numStr = currentGaugeMbps.ToString("0.0");
-            using (Font fNum = new Font("Segoe UI", 18F, FontStyle.Bold)) using (Font fSub = new Font("Microsoft JhengHei UI", 8F))
-            using (SolidBrush bw = new SolidBrush(Color.White)) using (SolidBrush bg = new SolidBrush(Color.FromArgb(150, 175, 200))) {
-                g.DrawString(numStr, fNum, bw, 112 - g.MeasureString(numStr, fNum).Width / 2, 54);
-                g.DrawString("Mbps 下載極限", fSub, bg, 112 - g.MeasureString("Mbps 下載極限", fSub).Width / 2, 92);
-            }
+Color themeCol = isTestingUpload ? Color.FromArgb(65, 235, 165) : Color.FromArgb(65, 220, 240);
+if (sweep > 1) using (Pen fgPen = new Pen(themeCol, 12) { StartCap = LineCap.Round, EndCap = LineCap.Round }) g.DrawArc(fgPen, rect, 150, sweep);
+string numStr = currentGaugeMbps.ToString("0.0");
+string subTitle = isTestingUpload ? "Mbps 上傳極限" : "Mbps 下載極限";
+using (Font fNum = new Font("Segoe UI", 18F, FontStyle.Bold)) using (Font fSub = new Font("Microsoft JhengHei UI", 8F))
+using (SolidBrush bw = new SolidBrush(Color.White)) using (SolidBrush bg = new SolidBrush(Color.FromArgb(150, 175, 200))) {
+    g.DrawString(numStr, fNum, bw, 112 - g.MeasureString(numStr, fNum).Width / 2, 54);
+    g.DrawString(subTitle, fSub, bg, 112 - g.MeasureString(subTitle, fSub).Width / 2, 92);
+}
         }
         void PnlChart_Paint(object sender, PaintEventArgs e) {
             Graphics g = e.Graphics; g.SmoothingMode = SmoothingMode.AntiAlias;
@@ -221,7 +225,7 @@ namespace DualEngineNetWatchdog {
             double maxVal = Math.Max(maxGaugeMbps, speedHistory.Max() * 1.1);
             PointF[] pts = new PointF[speedHistory.Count];
             for (int i = 0; i < speedHistory.Count; i++) pts[i] = new PointF(10 + (float)i / (speedHistory.Count - 1) * 215f, 118 - (float)(speedHistory[i] / maxVal * 102f));
-            using (Pen lp = new Pen(Color.FromArgb(75, 225, 240), 2.2f)) g.DrawLines(lp, pts);
+            using (Pen lp = new Pen(isTestingUpload ? Color.FromArgb(65, 235, 165) : Color.FromArgb(75, 225, 240), 2.2f)) g.DrawLines(lp, pts);
         }
         void PnlRing_Paint(object sender, PaintEventArgs e) {
             Graphics g = e.Graphics; g.SmoothingMode = SmoothingMode.AntiAlias;
@@ -325,7 +329,9 @@ namespace DualEngineNetWatchdog {
                         UpdateBanner("  ⚡ [第 1 棒 / 引擎 A] 正在全速測試物理極限頻寬與雙向滿載延遲 (Ookla)...", Color.FromArgb(35, 55, 88), Color.FromArgb(80, 215, 245));
                         var resA = await RunEngineA_OoklaAsync(token); if (resA == null) throw new Exception("引擎 A 連線逾時或無回應");
                         UpdateBanner("  🚀 [第 2 棒 / 引擎 B] 物理測速完成，接力啟動 LibreSpeed 開源引擎與 DNS/網頁實測...", Color.FromArgb(30, 68, 65), Color.FromArgb(80, 235, 185));
+                        await Task.Delay(1200, token);
                         var resB = await RunEngineB_AppLayerAsync(resA.Item1, token);
+
 
                         long dlDelta = Math.Max(0, resA.Item5 - resA.Item3);
                         long ulDelta = Math.Max(0, resA.Item6 - resA.Item3);
@@ -364,7 +370,26 @@ namespace DualEngineNetWatchdog {
                         try {
                             var obj = jss.Deserialize<Dictionary<string, object>>(line); if (obj == null || !obj.ContainsKey("type")) continue; string type = Convert.ToString(obj["type"]);
                             if (type == "testStart" && obj.ContainsKey("server")) { var srv = obj["server"] as Dictionary<string, object>; if (srv != null && srv.ContainsKey("name")) srvName = Convert.ToString(srv["name"]); }
-                            else if (type == "download" && obj.ContainsKey("download")) { var dl = obj["download"] as Dictionary<string, object>; if (dl != null && dl.ContainsKey("bandwidth")) { double cur = Math.Round((Convert.ToDouble(dl["bandwidth"]) * 8.0) / 1000000.0, 2); this.Invoke((Action)(() => { currentGaugeMbps = cur; speedHistory.Add(cur); if (speedHistory.Count > 45) speedHistory.RemoveAt(0); pnlGauge.Invalidate(); pnlChart.Invalidate(); })); } }
+                            else if (type == "download" && obj.ContainsKey("download")) {
+    var dl = obj["download"] as Dictionary<string, object>;
+    if (dl != null && dl.ContainsKey("bandwidth")) {
+        double cur = Math.Round((Convert.ToDouble(dl["bandwidth"]) * 8.0) / 1000000.0, 2);
+        this.Invoke((Action)(() => { isTestingUpload = false; currentGaugeMbps = cur; speedHistory.Add(cur); if (speedHistory.Count > 45) speedHistory.RemoveAt(0); pnlGauge.Invalidate(); pnlChart.Invalidate(); }));
+    }
+}
+else if (type == "upload" && obj.ContainsKey("upload")) {
+    var ul = obj["upload"] as Dictionary<string, object>;
+    if (ul != null && ul.ContainsKey("bandwidth")) {
+        double cur = Math.Round((Convert.ToDouble(ul["bandwidth"]) * 8.0) / 1000000.0, 2);
+        this.Invoke((Action)(() => {
+            if (!isTestingUpload) { isTestingUpload = true; speedHistory.Clear(); }
+            currentGaugeMbps = cur; lblUpVal.Text = cur.ToString("0.0") + " Mbps";
+            speedHistory.Add(cur); if (speedHistory.Count > 45) speedHistory.RemoveAt(0);
+            pnlGauge.Invalidate(); pnlChart.Invalidate();
+        }));
+    }
+}
+
                                                         else if (type == "result") {
                                 if (obj.ContainsKey("isp")) {
                                     string realIsp = Convert.ToString(obj["isp"]);
@@ -389,12 +414,12 @@ namespace DualEngineNetWatchdog {
             long dnsMs = 999;
             try {
                 var swDns = Stopwatch.StartNew();
-                var entry = await Dns.GetHostEntryAsync("://youtube.com");
+                var entry = await Dns.GetHostEntryAsync("youtube.com");
                 swDns.Stop();
                 if (entry != null && entry.AddressList != null && entry.AddressList.Length > 0) dnsMs = Math.Max(1, swDns.ElapsedMilliseconds);
             } catch { dnsMs = 999; }
 
-            long webMs = (await MeasureHttpHeadMsAsync("https://google.com") + await MeasureHttpHeadMsAsync("https://1.1.1")) / 2;
+            long webMs = (await MeasureHttpHeadMsAsync("https://google.com") + await MeasureHttpHeadMsAsync("https://1.1.1.1")) / 2;
             double lsDownMbps = 0;
 
             await Task.Run(() => {
@@ -437,11 +462,11 @@ namespace DualEngineNetWatchdog {
         void UpdateAllDashboardUI(Tuple<double, double, long, double, long, long, double, Tuple<string>> rA, Tuple<long, double, long, int> rB, string diag, bool dBad, bool uBad, bool bufBad, bool shpBad, string bbGrade, long maxDelta) {
             if (this.IsDisposed || !this.IsHandleCreated) return;
             this.Invoke((Action)(() => {
-                currentGaugeMbps = rA.Item1; maxGaugeMbps = Math.Max(maxGaugeMbps, rA.Item1 * 1.1); pnlGauge.Invalidate(); pnlChart.Invalidate();
+                isTestingUpload = false; currentGaugeMbps = rA.Item1; maxGaugeMbps = Math.Max(maxGaugeMbps, rA.Item1 * 1.1); pnlGauge.Invalidate(); pnlChart.Invalidate();
                 lblSrv.Text = rA.Rest.Item1; lblUpVal.Text = rA.Item2.ToString("0.0") + " Mbps";
                 lblIdlePing.Text = rA.Item3 + " ms"; lblLoadDown.Text = rA.Item5 + " ms"; lblLoadUp.Text = rA.Item6 + " ms";
                 lblJitter.Text = rA.Item4 + " ms / " + rA.Item7.ToString("0.0") + "%";
-                webPctVal = rB.Item1 >= 999 ? 0 : Math.Max(0, Math.Min(100, 100.0 - (rB.Item1 / 3.0))); lblWebMs.Text = rB.Item1 + " ms"; lblWebPct.Text = string.Format("{0:0}%", webPctVal); pnlWebBar.Invalidate();
+                webPctVal = rB.Item1 >= 999 ? 0 : Math.Max(0, Math.Min(100, 100.0 - (rB.Item1 / 10.0))); lblWebMs.Text = rB.Item1 + " ms"; lblWebPct.Text = string.Format("{0:0}%", webPctVal); pnlWebBar.Invalidate();
                 streamPctVal = Math.Max(0, Math.Min(100, (rB.Item2 / Math.Max(100, baseDown)) * 100.0)); lblStreamMbps.Text = rB.Item2.ToString("0.0") + " Mbps"; lblStreamPct.Text = string.Format("{0:0}%", streamPctVal); pnlStreamBar.Invalidate();
                 video4kVal = rB.Item2 >= 25 ? 98 : (rB.Item2 >= 15 ? 85 : 45); lbl4kPct.Text = video4kVal + " %"; lbl4kTag.Text = rB.Item2 >= 25 ? "可順暢播 4K" : "建議 1080p"; pnl4kBar.Invalidate();
                 lblDnsMs.Text = rB.Item3 + " ms";
@@ -458,7 +483,7 @@ namespace DualEngineNetWatchdog {
         void AddLogAndCsv(string time, string mode, double d, double u, double strm, long p, long ld, long w, int sc, string diag, bool isAbn) {
             if (this.IsDisposed || !this.IsHandleCreated) return;
             this.Invoke((Action)(() => {
-                dgvLogs.Rows.Insert(0, time, mode, d.ToString("0.1") + "M", u.ToString("0.1") + "M", strm.ToString("0.1") + "M", string.Format("{0}ms / {1}ms", p, ld), sc, diag);
+                dgvLogs.Rows.Insert(0, time, mode, d.ToString("0.0") + "M", u.ToString("0.0") + "M", strm.ToString("0.0") + "M", string.Format("{0}ms / {1}ms", p, ld), sc, diag);
                 if (dgvLogs.Rows.Count > 50) dgvLogs.Rows.RemoveAt(dgvLogs.Rows.Count - 1);
             }));
             try { File.AppendAllText(csvPath, string.Format("{0},{1},{2},{3},{4},{5},{6},{7},{8},\"{9}\"\r\n", time, mode, d, u, strm, p, ld, w, sc, diag.Replace("\"", "\"\"")), new UTF8Encoding(true)); } catch { }
