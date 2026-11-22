@@ -46,17 +46,17 @@ if not exist "%CSC%" (
 )
 
 
-:: 4. Compile & Embed Both Engines into NetPulseDual_v2.0.exe
+:: 4. Compile & Embed Both Engines into NetPulseDual_v2.1.exe
 if exist "NetPulseDual.exe" del /f /q "NetPulseDual.exe"
 echo [3/4] Compiling NetPulse Dual v2.0 and embedding dual engines...
-"%CSC%" /nologo /target:winexe /optimize+ /r:System.dll,System.Core.dll,System.Windows.Forms.dll,System.Drawing.dll,System.Web.Extensions.dll,System.Net.Http.dll /resource:"speedtest.exe",speedtest.exe /resource:"librespeed-cli.exe",librespeed-cli.exe /out:"NetPulseDual_v2.0.exe" "Program.cs"
+"%CSC%" /nologo /target:winexe /optimize+ /r:System.dll,System.Core.dll,System.Windows.Forms.dll,System.Drawing.dll,System.Web.Extensions.dll,System.Net.Http.dll /resource:"speedtest.exe",speedtest.exe /resource:"librespeed-cli.exe",librespeed-cli.exe /out:"NetPulseDual_v2.1.exe" "Program.cs"
 
 if errorlevel 1 (
     echo [Failed] Compilation failed. Check error messages above.
     pause & exit /b 1
 )
 
-echo [4/4] Success! Generated standalone executable: NetPulseDual_v2.0.exe
+echo [4/4] Success! Generated standalone executable: NetPulseDual_v2.1.exe
 echo ========================================================
-start "" "NetPulseDual_v2.0.exe"
+start "" "NetPulseDual_v2.1.exe"
 pause

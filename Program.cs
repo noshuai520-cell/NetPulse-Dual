@@ -21,11 +21,12 @@ namespace DualEngineNetWatchdog {
         ComboBox cmbPlan, cmbTol;
         Button btnSingle, btnSentinel, btnStop, btnCsv, btnHelp;
         Label lblHwInfo, lblStatusBanner, lblDiagReport, lblSrv, lblIsp, lblUpVal, lblIdlePing, lblLoadDown, lblLoadUp, lblJitter;
-        Label lblWebMs, lblWebPct, lblStreamMbps, lblStreamPct, lbl4kPct, lbl4kTag, lblDnsMs, lblShapingTxt;
-        Panel pnlGauge, pnlChart, pnlRing, pnlWebBar, pnlStreamBar, pnl4kBar;
+        Label lblWebMs, lblWebPct, lblStreamMbps, lblStreamPct, lblCableMs, lblCableTag, lblDnsMs, lblShapingTxt;
+        Label lblScene4k, lblSceneGame, lblSceneWork;
+        Panel pnlGauge, pnlChart, pnlRing, pnlWebBar, pnlStreamBar, pnlCableBar;
         DataGridView dgvLogs;
         CancellationTokenSource loopCts;
-        double baseDown = 500, baseUp = 500, tolPercent = 8.0, currentGaugeMbps = 0, maxGaugeMbps = 1000, webPctVal = 0, streamPctVal = 0, video4kVal = 0;
+        double baseDown = 500, baseUp = 500, tolPercent = 8.0, currentGaugeMbps = 0, maxGaugeMbps = 1000, webPctVal = 0, streamPctVal = 0, cablePctVal = 0;
         string baseDir = "", cliExe = "", lsExe = "", csvPath = "";
         bool wasAbnormal = false;
         DateTime lastFullTestTime = DateTime.MinValue;
@@ -44,16 +45,16 @@ namespace DualEngineNetWatchdog {
         protected override void OnFormClosing(FormClosingEventArgs e) { if (loopCts != null) { try { loopCts.Cancel(); } catch { } } base.OnFormClosing(e); }
 
         void InitUI() {
-            this.Text = "NetPulse Dual v2.0｜雙核網路脈搏診斷儀  (by Le_morries)";
+            this.Text = "NetPulse Dual v2.1｜雙核網路脈搏診斷儀  (by Le_morries)";
             this.Size = new Size(1060, 790); this.StartPosition = FormStartPosition.CenterScreen;
             this.BackColor = Color.FromArgb(16, 22, 34); this.ForeColor = Color.White;
             this.Font = new Font("Microsoft JhengHei UI", 9.5F); this.FormBorderStyle = FormBorderStyle.Sizable;
             this.MaximizeBox = true; this.MinimumSize = new Size(1060, 790); this.DoubleBuffered = true;
 
             Panel pnlTop = new Panel { Dock = DockStyle.Top, Height = 64, BackColor = Color.FromArgb(22, 30, 46) };
-            Label lblTitle = new Label { Text = "  ⚡ NetPulse Dual v2.0｜雙核網路脈搏診斷儀", Font = new Font("Microsoft JhengHei UI", 13F, FontStyle.Bold), ForeColor = Color.FromArgb(65, 210, 235), Location = new Point(10, 8), AutoSize = true };
+            Label lblTitle = new Label { Text = "  ⚡ NetPulse Dual v2.1｜雙核網路脈搏診斷儀", Font = new Font("Microsoft JhengHei UI", 13F, FontStyle.Bold), ForeColor = Color.FromArgb(65, 210, 235), Location = new Point(10, 8), AutoSize = true };
             Label lblAuthor = new Label { Text = "Author: Le_morries  ", Font = new Font("Consolas", 9.5F, FontStyle.Bold), ForeColor = Color.FromArgb(130, 155, 185), Dock = DockStyle.Right, Width = 185, TextAlign = ContentAlignment.MiddleRight, Cursor = Cursors.Hand };
-            lblAuthor.Click += (s, e) => { try { Process.Start(new ProcessStartInfo("https://github.com") { UseShellExecute = true }); } catch { } };
+            lblAuthor.Click += (s, e) => { try { Process.Start(new ProcessStartInfo("https://github.com/noshuai520-cell/NetPulse-Dual") { UseShellExecute = true }); } catch { } };
             lblHwInfo = new Label { Text = "  正在偵測本機網卡硬體規格與內外網拓撲路徑...", Font = new Font("Microsoft JhengHei UI", 8.5F), ForeColor = Color.FromArgb(150, 170, 195), Location = new Point(12, 38), AutoSize = true };
             pnlTop.Controls.AddRange(new Control[] { lblTitle, lblAuthor, lblHwInfo }); this.Controls.Add(pnlTop);
 
@@ -106,12 +107,16 @@ namespace DualEngineNetWatchdog {
             pnlRing = new Panel { Location = new Point(14, 42), Size = new Size(470, 68), BackColor = Color.FromArgb(20, 28, 42) }; pnlRing.Paint += PnlRing_Paint;
             pnlB.Controls.Add(pnlRing);
 
-            lblWebMs = CreateBarCard(pnlB, "網頁平均載入時間 (HTTPS 握手)", "-- ms", 14, 118, out pnlWebBar, () => webPctVal, Color.FromArgb(55, 210, 235), out lblWebPct);
-            lblStreamMbps = CreateBarCard(pnlB, "LibreSpeed 獨立下載速率 (無白名單實測)", "-- Mbps", 14, 176, out pnlStreamBar, () => streamPctVal, Color.FromArgb(65, 225, 165), out lblStreamPct);
-            lbl4kPct = CreateBarCard(pnlB, "4K 影音串流流暢度預估", "-- %", 14, 234, out pnl4kBar, () => video4kVal, Color.FromArgb(100, 185, 255), out lbl4kTag);
-            lblDnsMs = CreateMiniCard(pnlB, "DNS 解析反應時間", "-- ms", 14, 290, 228, Color.FromArgb(130, 240, 180));
-            lblShapingTxt = CreateMiniCard(pnlB, "雙向 Bufferbloat 與限速診斷", "等待檢測", 252, 290, 232, Color.FromArgb(130, 240, 180));
-            this.Controls.Add(pnlB);
+            lblWebMs = CreateBarCard(pnlB, "網頁平均載入時間 (HTTPS 握手)", "-- ms", 14, 114, out pnlWebBar, () => webPctVal, Color.FromArgb(55, 210, 235), out lblWebPct);
+            lblStreamMbps = CreateBarCard(pnlB, "LibreSpeed 獨立下載速率 (無白名單實測)", "-- Mbps", 14, 162, out pnlStreamBar, () => streamPctVal, Color.FromArgb(65, 225, 165), out lblStreamPct);
+            lblCableMs = CreateBarCard(pnlB, "海外海纜路由延遲 (日本東京 / 美國西岸)", "-- / -- ms", 14, 210, out pnlCableBar, () => cablePctVal, Color.FromArgb(100, 185, 255), out lblCableTag);
+            lblScene4k = CreateSceneCard(pnlB, "🎬 4K 影音串流", "待測", 14, 258, 152);
+            lblSceneGame = CreateSceneCard(pnlB, "🎮 線上競技遊戲", "待測", 173, 258, 152);
+            lblSceneWork = CreateSceneCard(pnlB, "💼 視訊 / 大檔上傳", "待測", 332, 258, 152);
+            lblDnsMs = CreateMiniCard(pnlB, "DNS 解析反應時間", "-- ms", 14, 300, 228, Color.FromArgb(130, 240, 180));
+            lblShapingTxt = CreateMiniCard(pnlB, "雙向 Bufferbloat 與限速診斷", "等待檢測", 252, 300, 232, Color.FromArgb(130, 240, 180));
+this.Controls.Add(pnlB);
+
 
             Panel pnlDiag = new Panel { Location = new Point(16, 524), Size = new Size(1012, 62), BackColor = Color.FromArgb(28, 38, 56) };
             pnlDiag.Controls.Add(new Label { Text = "【自動化工程師白話診斷報告】", Location = new Point(12, 6), AutoSize = true, Font = new Font("Microsoft JhengHei UI", 9F, FontStyle.Bold), ForeColor = Color.FromArgb(255, 210, 95) });
@@ -194,15 +199,22 @@ namespace DualEngineNetWatchdog {
             Label lv = new Label { Text = initVal, Location = new Point(8, 22), Size = new Size(w - 14, 22), ForeColor = valColor, Font = new Font("Microsoft JhengHei UI", 9.5F, FontStyle.Bold) };
             p.Controls.AddRange(new Control[] { lt, lv }); parent.Controls.Add(p); return lv;
         }
+        Label CreateSceneCard(Panel parent, string title, string initStatus, int x, int y, int w) {
+            Panel p = new Panel { Location = new Point(x, y), Size = new Size(w, 36), BackColor = Color.FromArgb(20, 28, 42) };
+            Label lt = new Label { Text = title, Location = new Point(8, 2), Size = new Size(w - 12, 15), ForeColor = Color.FromArgb(165, 185, 205), Font = new Font("Microsoft JhengHei UI", 7.8F) };
+            Label lv = new Label { Text = initStatus, Location = new Point(8, 17), Size = new Size(w - 12, 17), ForeColor = Color.FromArgb(140, 160, 185), Font = new Font("Microsoft JhengHei UI", 8.5F, FontStyle.Bold) };
+            p.Controls.AddRange(new Control[] { lt, lv }); parent.Controls.Add(p); return lv;
+        }
         Label CreateBarCard(Panel parent, string title, string initVal, int x, int y, out Panel barPanel, Func<double> pctGetter, Color barColor, out Label lblRightTag) {
-            Panel p = new Panel { Location = new Point(x, y), Size = new Size(470, 52), BackColor = Color.FromArgb(20, 28, 42) };
-            Label lt = new Label { Text = title, Location = new Point(10, 5), AutoSize = true, ForeColor = Color.FromArgb(165, 185, 205), Font = new Font("Microsoft JhengHei UI", 8.5F) };
-            Label tag = new Label { Text = "--", Location = new Point(370, 5), Size = new Size(90, 18), TextAlign = ContentAlignment.MiddleRight, ForeColor = barColor, Font = new Font("Microsoft JhengHei UI", 8F, FontStyle.Bold) };
-            Label lv = new Label { Text = initVal, Location = new Point(10, 24), Size = new Size(120, 22), ForeColor = Color.White, Font = new Font("Microsoft JhengHei UI", 10F, FontStyle.Bold) };
-            Panel bp = new Panel { Location = new Point(135, 30), Size = new Size(323, 10), BackColor = Color.FromArgb(36, 48, 68) };
+            Panel p = new Panel { Location = new Point(x, y), Size = new Size(470, 44), BackColor = Color.FromArgb(20, 28, 42) };
+            Label lt = new Label { Text = title, Location = new Point(10, 4), AutoSize = true, ForeColor = Color.FromArgb(165, 185, 205), Font = new Font("Microsoft JhengHei UI", 8.5F) };
+            Label tag = new Label { Text = "--", Location = new Point(365, 4), Size = new Size(95, 18), TextAlign = ContentAlignment.MiddleRight, ForeColor = barColor, Font = new Font("Microsoft JhengHei UI", 8F, FontStyle.Bold) };
+            Label lv = new Label { Text = initVal, Location = new Point(10, 20), Size = new Size(135, 20), ForeColor = Color.White, Font = new Font("Microsoft JhengHei UI", 9.5F, FontStyle.Bold) };
+            Panel bp = new Panel { Location = new Point(150, 26), Size = new Size(308, 9), BackColor = Color.FromArgb(36, 48, 68) };
             bp.Paint += (s, e) => { e.Graphics.SmoothingMode = SmoothingMode.AntiAlias; int fillW = (int)(bp.Width * (Math.Max(0, Math.Min(100, pctGetter())) / 100.0)); if (fillW > 0) using (SolidBrush br = new SolidBrush(barColor)) e.Graphics.FillRectangle(br, 0, 0, fillW, bp.Height); };
             p.Controls.AddRange(new Control[] { lt, tag, lv, bp }); parent.Controls.Add(p); barPanel = bp; lblRightTag = tag; return lv;
         }
+
         void PnlGauge_Paint(object sender, PaintEventArgs e) {
             Graphics g = e.Graphics; g.SmoothingMode = SmoothingMode.AntiAlias;
             Rectangle rect = new Rectangle(42, 12, 140, 140);
@@ -266,7 +278,7 @@ using (SolidBrush bw = new SolidBrush(Color.White)) using (SolidBrush bg = new S
                     string pubIp = "查詢中...", ispName = "自動偵測中...";
                     ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
                     using (HttpClient hc = new HttpClient { Timeout = TimeSpan.FromSeconds(4) }) {
-                        hc.DefaultRequestHeaders.UserAgent.ParseAdd("NetPulseDual/2.0");
+                        hc.DefaultRequestHeaders.UserAgent.ParseAdd("NetPulseDual/2.1");
                         try {
                             string json = hc.GetStringAsync("https://ipinfo.io/json").Result;
                             var d = new JavaScriptSerializer().Deserialize<Dictionary<string, object>>(json);
@@ -410,7 +422,7 @@ else if (type == "upload" && obj.ContainsKey("upload")) {
                 return (dMbps <= 0 && uMbps <= 0) ? null : Tuple.Create(dMbps, uMbps, idlePing, jitter, dlLoadPing, ulLoadPing, loss, srvName);
             }, token);
         }
-        async Task<Tuple<long, double, long, int>> RunEngineB_AppLayerAsync(double physDownMbps, CancellationToken token) {
+        async Task<Tuple<long, double, long, int, long, long>> RunEngineB_AppLayerAsync(double physDownMbps, CancellationToken token) {
             long dnsMs = 999;
             try {
                 var swDns = Stopwatch.StartNew();
@@ -419,8 +431,13 @@ else if (type == "upload" && obj.ContainsKey("upload")) {
                 if (entry != null && entry.AddressList != null && entry.AddressList.Length > 0) dnsMs = Math.Max(1, swDns.ElapsedMilliseconds);
             } catch { dnsMs = 999; }
 
-            long webMs = (await MeasureHttpHeadMsAsync("https://google.com") + await MeasureHttpHeadMsAsync("https://1.1.1.1")) / 2;
-            double lsDownMbps = 0;
+long webMs = (await MeasureHttpHeadMsAsync("https://www.google.com") + await MeasureHttpHeadMsAsync("https://1.1.1.1")) / 2;
+
+// 實測日本東京 (Tokyo) 與美國西岸 (US West) 海外海纜骨幹延遲
+long jpMs = Math.Min(GetTcpPing("103.21.244.0", 443), GetTcpPing("172.67.0.1", 443));
+long usMs = Math.Min(GetTcpPing("104.16.132.229", 443), GetTcpPing("8.8.4.4", 53));
+
+double lsDownMbps = 0;
 
             await Task.Run(() => {
                 try {
@@ -443,7 +460,7 @@ else if (type == "upload" && obj.ContainsKey("upload")) {
             int webScore = (webMs >= 999) ? 0 : (webMs <= 120 ? 35 : (webMs <= 300 ? 28 : 15));
             int spdScore = (lsDownMbps >= 80) ? 40 : (lsDownMbps >= 35 ? 32 : (lsDownMbps > 0 ? 18 : 0));
             int totalScore = Math.Min(100, dnsScore + webScore + spdScore);
-            return Tuple.Create(webMs, lsDownMbps, dnsMs, totalScore);
+            return Tuple.Create(webMs, lsDownMbps, dnsMs, totalScore, jpMs, usMs);
         }
 
         long GetTcpPing(string host, int port) {
@@ -459,26 +476,51 @@ else if (type == "upload" && obj.ContainsKey("upload")) {
             if (d < md || u < mu) return "⚠️ 下載或上傳物理頻寬低於方案標準容許值，建議重啟數據機或檢查網路線。";
             return string.Format("✅ 雙引擎驗證達標！Bufferbloat 延遲控制【{0}】（下載 +{1}ms / 上傳 +{2}ms），連線品質極佳。", bbGrade, dlDelta, ulDelta);
         }
-        void UpdateAllDashboardUI(Tuple<double, double, long, double, long, long, double, Tuple<string>> rA, Tuple<long, double, long, int> rB, string diag, bool dBad, bool uBad, bool bufBad, bool shpBad, string bbGrade, long maxDelta) {
-            if (this.IsDisposed || !this.IsHandleCreated) return;
-            this.Invoke((Action)(() => {
-                isTestingUpload = false; currentGaugeMbps = rA.Item1; maxGaugeMbps = Math.Max(maxGaugeMbps, rA.Item1 * 1.1); pnlGauge.Invalidate(); pnlChart.Invalidate();
-                lblSrv.Text = rA.Rest.Item1; lblUpVal.Text = rA.Item2.ToString("0.0") + " Mbps";
-                lblIdlePing.Text = rA.Item3 + " ms"; lblLoadDown.Text = rA.Item5 + " ms"; lblLoadUp.Text = rA.Item6 + " ms";
-                lblJitter.Text = rA.Item4 + " ms / " + rA.Item7.ToString("0.0") + "%";
-                webPctVal = rB.Item1 >= 999 ? 0 : Math.Max(0, Math.Min(100, 100.0 - (rB.Item1 / 10.0))); lblWebMs.Text = rB.Item1 + " ms"; lblWebPct.Text = string.Format("{0:0}%", webPctVal); pnlWebBar.Invalidate();
-                streamPctVal = Math.Max(0, Math.Min(100, (rB.Item2 / Math.Max(100, baseDown)) * 100.0)); lblStreamMbps.Text = rB.Item2.ToString("0.0") + " Mbps"; lblStreamPct.Text = string.Format("{0:0}%", streamPctVal); pnlStreamBar.Invalidate();
-                video4kVal = rB.Item2 >= 25 ? 98 : (rB.Item2 >= 15 ? 85 : 45); lbl4kPct.Text = video4kVal + " %"; lbl4kTag.Text = rB.Item2 >= 25 ? "可順暢播 4K" : "建議 1080p"; pnl4kBar.Invalidate();
-                lblDnsMs.Text = rB.Item3 + " ms";
-                lblDnsMs.ForeColor = rB.Item3 >= 999 ? Color.FromArgb(255, 110, 110) : Color.FromArgb(130, 240, 180);
+             void UpdateAllDashboardUI(Tuple<double, double, long, double, long, long, double, Tuple<string>> rA, Tuple<long, double, long, int, long, long> rB, string diag, bool dBad, bool uBad, bool bufBad, bool shpBad, string bbGrade, long maxDelta) {
+         if (this.IsDisposed || !this.IsHandleCreated) return;
+         this.Invoke((Action)(() => {
+             isTestingUpload = false; currentGaugeMbps = rA.Item1; maxGaugeMbps = Math.Max(maxGaugeMbps, rA.Item1 * 1.1); pnlGauge.Invalidate(); pnlChart.Invalidate();
+             lblSrv.Text = rA.Rest.Item1; lblUpVal.Text = rA.Item2.ToString("0.0") + " Mbps";
+             lblIdlePing.Text = rA.Item3 + " ms"; lblLoadDown.Text = rA.Item5 + " ms"; lblLoadUp.Text = rA.Item6 + " ms";
+             lblJitter.Text = rA.Item4 + " ms / " + rA.Item7.ToString("0.0") + "%";
+             webPctVal = rB.Item1 >= 999 ? 0 : Math.Max(15, Math.Min(100, 100.0 - (rB.Item1 / 10.0))); lblWebMs.Text = rB.Item1 + " ms"; lblWebPct.Text = string.Format("{0:0}%", webPctVal); pnlWebBar.Invalidate();
+             streamPctVal = Math.Max(0, Math.Min(100, (rB.Item2 / Math.Max(100, baseDown)) * 100.0)); lblStreamMbps.Text = rB.Item2.ToString("0.0") + " Mbps"; lblStreamPct.Text = string.Format("{0:0}%", streamPctVal); pnlStreamBar.Invalidate();
 
-                lblShapingTxt.Text = shpBad ? "⚠️ 疑似限速" : string.Format("緩衝：{0} (+{1}ms)", bbGrade, maxDelta);
-                lblShapingTxt.ForeColor = (shpBad || bbGrade == "嚴重" || bbGrade == "中度") ? Color.FromArgb(255, 120, 120) : (bbGrade == "輕微" ? Color.FromArgb(255, 205, 90) : Color.FromArgb(130, 240, 180));
+             // 海外海纜路由進度條
+             long jpMs = rB.Item5, usMs = rB.Item6;
+             bool cableRouteBad = (jpMs > 90 && jpMs < 999) || (usMs > 185 && usMs < 999);
+             cablePctVal = (jpMs >= 999 && usMs >= 999) ? 0 : (cableRouteBad ? 45 : 95);
+             lblCableMs.Text = string.Format("JP {0}ms / US {1}ms", jpMs, usMs);
+             lblCableTag.Text = (jpMs >= 999) ? "海外連線異常" : (cableRouteBad ? "⚠️ 疑似海纜繞路" : "骨幹直連正常");
+             lblCableTag.ForeColor = (jpMs >= 999 || cableRouteBad) ? Color.FromArgb(255, 130, 110) : Color.FromArgb(100, 230, 180);
+             pnlCableBar.Invalidate();
 
-                appScore = rB.Item4; pnlRing.Invalidate();
-                lblDiagReport.Text = diag; lblDiagReport.ForeColor = (dBad || uBad || bufBad || shpBad || rB.Item3 >= 999) ? Color.FromArgb(255, 155, 120) : Color.FromArgb(180, 245, 205);
-            }));
-        }
+             // 黃金 3 場景紅綠燈標籤
+             Color colOk = Color.FromArgb(80, 235, 165), colWarn = Color.FromArgb(255, 205, 85), colBad = Color.FromArgb(255, 110, 110);
+             if (rB.Item2 >= 35 && rA.Item4 < 20) { lblScene4k.Text = "● 順暢滿畫質"; lblScene4k.ForeColor = colOk; }
+             else if (rB.Item2 >= 15) { lblScene4k.Text = "▲ 勉強可用"; lblScene4k.ForeColor = colWarn; }
+             else { lblScene4k.Text = "✖ 易轉圈卡頓"; lblScene4k.ForeColor = colBad; }
+
+             if (rA.Item3 <= 25 && rA.Item4 <= 10 && maxDelta <= 25) { lblSceneGame.Text = "● 低延遲順暢"; lblSceneGame.ForeColor = colOk; }
+             else if (maxDelta <= 50 && rA.Item3 <= 45) { lblSceneGame.Text = "▲ 偶有波動"; lblSceneGame.ForeColor = colWarn; }
+             else { lblSceneGame.Text = "✖ 易爆 Ping 瞬移"; lblSceneGame.ForeColor = colBad; }
+
+             long ulDelta = Math.Max(0, rA.Item6 - rA.Item3);
+             if (rA.Item2 >= 50 && ulDelta <= 35) { lblSceneWork.Text = "● 高速順暢"; lblSceneWork.ForeColor = colOk; }
+             else if (rA.Item2 >= 15 && ulDelta <= 70) { lblSceneWork.Text = "▲ 尚可應付"; lblSceneWork.ForeColor = colWarn; }
+             else { lblSceneWork.Text = "✖ 上傳易塞車"; lblSceneWork.ForeColor = colBad; }
+
+             lblDnsMs.Text = rB.Item3 + " ms";
+             lblDnsMs.ForeColor = rB.Item3 >= 999 ? Color.FromArgb(255, 110, 110) : Color.FromArgb(130, 240, 180);
+
+             lblShapingTxt.Text = shpBad ? "⚠️ 疑似限速" : string.Format("緩衝：{0} (+{1}ms)", bbGrade, maxDelta);
+             lblShapingTxt.ForeColor = (shpBad || bbGrade == "嚴重" || bbGrade == "中度") ? Color.FromArgb(255, 120, 120) : (bbGrade == "輕微" ? Color.FromArgb(255, 205, 90) : Color.FromArgb(130, 240, 180));
+
+             appScore = rB.Item4; pnlRing.Invalidate();
+             lblDiagReport.Text = diag; lblDiagReport.ForeColor = (dBad || uBad || bufBad || shpBad || rB.Item3 >= 999) ? Color.FromArgb(255, 155, 120) : Color.FromArgb(180, 245, 205);
+         }));
+     }
+
 
         void AddLogAndCsv(string time, string mode, double d, double u, double strm, long p, long ld, long w, int sc, string diag, bool isAbn) {
             if (this.IsDisposed || !this.IsHandleCreated) return;
