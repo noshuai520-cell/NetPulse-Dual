@@ -1,0 +1,15 @@
+# 忽略編譯產出的主程式與第三方測速核心（避免授權爭議與倉庫肥大）
+*.exe
+*.zip
+*.tar.gz
+
+# 忽略本機測試產生的 CSV 蒐證報表與暫存目錄
+*.csv
+ls_tmp/
+st_tmp/
+
+# 忽略編輯器與系統暫存檔
+.vs/
+.vscode/
+Thumbs.db
+desktop.ini
