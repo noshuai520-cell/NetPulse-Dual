@@ -1,8 +1,8 @@
 @echo off
-title NetPulse Dual v2.0 - Auto Builder
+title NetPulse Dual v2.1 - Auto Builder
 
 echo ========================================================
-echo   NetPulse Dual v2.0 (by Le_morries) - One-Click Builder
+echo   NetPulse Dual v2.1 (by Le_morries) - One-Click Builder
 echo ========================================================
 
 :: 1. Check / Fetch Ookla Speedtest CLI
@@ -49,7 +49,7 @@ if not exist "%CSC%" (
 :: 4. Compile & Embed Both Engines into NetPulseDual_v2.1.exe
 if exist "NetPulseDual.exe" del /f /q "NetPulseDual.exe"
 echo [3/4] Compiling NetPulse Dual v2.0 and embedding dual engines...
-"%CSC%" /nologo /target:winexe /optimize+ /r:System.dll,System.Core.dll,System.Windows.Forms.dll,System.Drawing.dll,System.Web.Extensions.dll,System.Net.Http.dll /resource:"speedtest.exe",speedtest.exe /resource:"librespeed-cli.exe",librespeed-cli.exe /out:"NetPulseDual_v2.1.exe" "Program.cs"
+"%CSC%" /nologo /target:winexe /win32icon:app.ico /optimize+ /r:System.dll,System.Core.dll,System.Windows.Forms.dll,System.Drawing.dll,System.Web.Extensions.dll,System.Net.Http.dll /resource:"speedtest.exe",speedtest.exe /resource:"librespeed-cli.exe",librespeed-cli.exe /out:"NetPulseDual_v2.1.exe" "Program.cs"
 
 if errorlevel 1 (
     echo [Failed] Compilation failed. Check error messages above.

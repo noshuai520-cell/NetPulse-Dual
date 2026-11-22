@@ -50,6 +50,7 @@ namespace DualEngineNetWatchdog {
             this.BackColor = Color.FromArgb(16, 22, 34); this.ForeColor = Color.White;
             this.Font = new Font("Microsoft JhengHei UI", 9.5F); this.FormBorderStyle = FormBorderStyle.Sizable;
             this.MaximizeBox = true; this.MinimumSize = new Size(1060, 790); this.DoubleBuffered = true;
+try { this.Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath); } catch { }
 
             Panel pnlTop = new Panel { Dock = DockStyle.Top, Height = 64, BackColor = Color.FromArgb(22, 30, 46) };
             Label lblTitle = new Label { Text = "  ⚡ NetPulse Dual v2.1｜雙核網路脈搏診斷儀", Font = new Font("Microsoft JhengHei UI", 13F, FontStyle.Bold), ForeColor = Color.FromArgb(65, 210, 235), Location = new Point(10, 8), AutoSize = true };
